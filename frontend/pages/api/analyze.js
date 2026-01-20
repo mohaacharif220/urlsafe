@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
-const kbPath = path.join(process.cwd(), 'backend', 'data', 'knowledge_base.json');
+const kbPath = path.join(process.cwd(), 'frontend', 'data', 'knowledge_base.json');
 let knowledgeBase = [];
 try {
   knowledgeBase = JSON.parse(fs.readFileSync(kbPath, 'utf8'));
