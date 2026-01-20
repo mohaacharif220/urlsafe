@@ -8,14 +8,6 @@ export default async function handler(req, res) {
   const input = req.body.input || '';
   const type = req.body.type || 'url';
 
-  // Construir el prompt según el tipo
-  let prompt = '';
-  if (type === 'url') {
-    prompt = `Analiza esta URL para detectar phishing: ${input}\n\nProporciona un análisis de seguridad en el siguiente formato JSON:\n{\n  "riesgo": "alto|medio|bajo",\n  "esPhishing": true|false,\n  "confianza": 0-100,\n  "indicadores": ["lista", "de", "señales"],\n  "explicacion": "explicación simple para usuarios sin conocimientos técnicos",\n  "recomendacion": "qué debe hacer el usuario"\n}`;
-  } else {
-    prompt = `Analiza este mensaje/conversación para detectar phishing o fraude:\n\n${input}\n\nProporciona un análisis de seguridad en el siguiente formato JSON:\n{\n  "riesgo": "alto|medio|bajo",\n  "esPhishing": true|false,\n  "confianza": 0-100,\n  "indicadores": ["lista", "de", "señales"],\n  "explicacion": "explicación simple para usuarios sin conocimientos técnicos",\n  "recomendacion": "qué debe hacer el usuario"\n}`;
-  }
-
   try {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
@@ -23,7 +15,43 @@ export default async function handler(req, res) {
       return;
     }
 
-    // Llamada a OpenAI Chat API (gpt-4o)
+    let messages = [];
+    let model = 'gpt-4o';
+    if (type === 'image') {
+      // input = base64, asume que es imagen PNG/JPG
+      messages = [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:image/png;base64,${input}`
+              }
+            },
+            {
+              type: 'text',
+              text: `Analiza esta imagen en busca de intentos de phishing, fraude o estafa. Proporciona tu análisis en formato JSON:\n{\n  "riesgo": "alto|medio|bajo",\n  "esPhishing": true|false,\n  "confianza": 0-100,\n  "indicadores": ["lista", "de", "señales"],\n  "explicacion": "explicación simple",\n  "recomendacion": "qué debe hacer el usuario"\n}`
+            }
+          ]
+        }
+      ];
+    } else if (type === 'url') {
+      messages = [
+        {
+          role: 'user',
+          content: `Analiza esta URL para detectar phishing: ${input}\n\nProporciona un análisis de seguridad en el siguiente formato JSON:\n{\n  "riesgo": "alto|medio|bajo",\n  "esPhishing": true|false,\n  "confianza": 0-100,\n  "indicadores": ["lista", "de", "señales"],\n  "explicacion": "explicación simple para usuarios sin conocimientos técnicos",\n  "recomendacion": "qué debe hacer el usuario"\n}`
+        }
+      ];
+    } else {
+      messages = [
+        {
+          role: 'user',
+          content: `Analiza este mensaje/conversación para detectar phishing o fraude:\n\n${input}\n\nProporciona un análisis de seguridad en el siguiente formato JSON:\n{\n  "riesgo": "alto|medio|bajo",\n  "esPhishing": true|false,\n  "confianza": 0-100,\n  "indicadores": ["lista", "de", "señales"],\n  "explicacion": "explicación simple para usuarios sin conocimientos técnicos",\n  "recomendacion": "qué debe hacer el usuario"\n}`
+        }
+      ];
+    }
+
     const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -31,10 +59,8 @@ export default async function handler(req, res) {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [
-          { role: 'user', content: prompt }
-        ],
+        model,
+        messages,
         max_tokens: 1000,
         temperature: 0.2
       })
