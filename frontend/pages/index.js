@@ -10,12 +10,13 @@ const PhishingDetector = () => {
   const [result, setResult] = useState(null);
   const [imageFile, setImageFile] = useState(null);
 
-  const analyzeBackend = async (content) => {
+
+  const analyzeBackend = async (content, type = 'url') => {
     try {
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input: content })
+        body: JSON.stringify({ input: content, type })
       });
       return await response.json();
     } catch (error) {
@@ -30,7 +31,7 @@ const PhishingDetector = () => {
     }
     setAnalyzing(true);
     setResult(null);
-    const analysis = await analyzeBackend(inputText);
+    const analysis = await analyzeBackend(inputText, activeTab === 'message' ? 'message' : 'url');
     setResult(analysis);
     setAnalyzing(false);
   };
@@ -44,8 +45,9 @@ const PhishingDetector = () => {
       const reader = new FileReader();
       reader.onload = async (event) => {
         const base64Data = event.target.result.split(',')[1];
-        // For now, just send base64 as input
-        const analysis = await analyzeBackend(base64Data);
+        // Para imágenes, podrías adaptar el backend para analizar imágenes si tienes acceso a GPT-4o vision
+        // Por ahora, solo envía el base64 como texto y tipo 'image'
+        const analysis = await analyzeBackend(base64Data, 'image');
         setResult(analysis);
         setAnalyzing(false);
       };
@@ -183,31 +185,34 @@ const PhishingDetector = () => {
             {result && (
               <div className="mt-8 space-y-6 animate-fadeIn">
                 {/* Risk Level */}
-                <div className={`${getRiskColor(result.riesgoPromedio >= 70 ? 'alto' : result.riesgoPromedio >= 40 ? 'medio' : 'bajo')} rounded-xl p-6 text-white text-center`}>
+                <div className={`${getRiskColor(result.riesgo)} rounded-xl p-6 text-white text-center`}>
                   <div className="flex flex-col items-center">
-                    {getRiskIcon(result.riesgoPromedio >= 70 ? 'alto' : result.riesgoPromedio >= 40 ? 'medio' : 'bajo')}
+                    {getRiskIcon(result.riesgo)}
                     <h3 className="text-2xl font-bold mt-4 mb-2">
-                      {result.riesgoPromedio >= 70 && '¡PELIGRO!'}
-                      {result.riesgoPromedio >= 40 && result.riesgoPromedio < 70 && 'SOSPECHOSO'}
-                      {result.riesgoPromedio < 40 && 'PARECE SEGURO'}
+                      {result.riesgo === 'alto' && '¡PELIGRO!'}
+                      {result.riesgo === 'medio' && 'SOSPECHOSO'}
+                      {result.riesgo === 'bajo' && 'PARECE SEGURO'}
                     </h3>
                     <p className="text-lg opacity-90">
-                      Riesgo promedio: {result.riesgoPromedio}%
+                      {result.esPhishing ? 'Posible intento de phishing detectado' : 'No se detectaron amenazas graves'}
                     </p>
+                    <div className="mt-3 text-sm opacity-75">
+                      Confianza del análisis: {result.confianza}%
+                    </div>
                   </div>
                 </div>
                 {/* Indicators */}
-                {result.matches && result.matches.length > 0 && (
+                {result.indicadores && result.indicadores.length > 0 && (
                   <div className="bg-gray-50 rounded-lg p-6">
                     <h4 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
                       <AlertTriangle className="w-5 h-5 text-orange-500" />
                       Señales detectadas:
                     </h4>
                     <ul className="space-y-2">
-                      {result.matches.map((entry, index) => (
+                      {result.indicadores.map((indicador, index) => (
                         <li key={index} className="flex items-start gap-2 text-gray-700">
                           <span className="text-orange-500 mt-1">•</span>
-                          <span>{entry.categoria} ({entry.tipo})</span>
+                          <span>{indicador}</span>
                         </li>
                       ))}
                     </ul>
@@ -216,12 +221,12 @@ const PhishingDetector = () => {
                 {/* Explanation */}
                 <div className="bg-blue-50 rounded-lg p-6">
                   <h4 className="font-bold text-blue-900 mb-3">¿Por qué es esto?</h4>
-                  <p className="text-gray-700 leading-relaxed">El riesgo se calcula según coincidencias con patrones de estafa, phishing o fraude en nuestra base de conocimiento.</p>
+                  <p className="text-gray-700 leading-relaxed">{result.explicacion}</p>
                 </div>
                 {/* Recommendation */}
                 <div className="bg-green-50 rounded-lg p-6">
                   <h4 className="font-bold text-green-900 mb-3">¿Qué debes hacer?</h4>
-                  <p className="text-gray-700 leading-relaxed">Si el riesgo es alto, evita interactuar y reporta. Si es medio, verifica con fuentes oficiales. Si es bajo, mantente alerta.</p>
+                  <p className="text-gray-700 leading-relaxed">{result.recomendacion}</p>
                 </div>
               </div>
             )}
