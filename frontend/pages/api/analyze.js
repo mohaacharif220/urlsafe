@@ -8,6 +8,8 @@ export default async function handler(req, res) {
   const input = req.body.input || '';
   const type = req.body.type || 'url';
 
+  // Para imágenes, input puede ser un objeto { base64, mime }
+
   try {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
@@ -18,7 +20,9 @@ export default async function handler(req, res) {
     let messages = [];
     let model = 'gpt-4o';
     if (type === 'image') {
-      // input = base64, asume que es imagen PNG/JPG
+      // input = { base64, mime }
+      const base64 = input.base64 || '';
+      const mime = input.mime || 'image/png';
       messages = [
         {
           role: 'user',
@@ -26,7 +30,7 @@ export default async function handler(req, res) {
             {
               type: 'image_url',
               image_url: {
-                url: `data:image/png;base64,${input}`
+                url: `data:${mime};base64,${base64}`
               }
             },
             {

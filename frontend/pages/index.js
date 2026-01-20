@@ -45,9 +45,8 @@ const PhishingDetector = () => {
       const reader = new FileReader();
       reader.onload = async (event) => {
         const base64Data = event.target.result.split(',')[1];
-        // Para imágenes, podrías adaptar el backend para analizar imágenes si tienes acceso a GPT-4o vision
-        // Por ahora, solo envía el base64 como texto y tipo 'image'
-        const analysis = await analyzeBackend(base64Data, 'image');
+        // Enviar base64 y tipo MIME al backend
+        const analysis = await analyzeBackend({ base64: base64Data, mime: file.type }, 'image');
         setResult(analysis);
         setAnalyzing(false);
       };
